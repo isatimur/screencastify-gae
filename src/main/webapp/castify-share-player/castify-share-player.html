@@ -1,0 +1,87 @@
+<link rel="import" href="../bower_components/polymer/polymer.html">
+
+<!--
+A element that handles shared files by showing them in a video element.
+-->
+<dom-module id="castify-share-player">
+
+  <style>
+    :host {
+      display: flex;
+    }
+
+    video {
+      width: 100%;
+    }
+  </style>
+
+  <template>
+    <video controls id="video" hidden></video>
+  </template>
+
+</dom-module>
+
+<script>
+
+  Polymer({
+
+    is: 'castify-share-player',
+
+    attached: function() {
+      var state = screencastify.decodeStateQuery();
+      if (state && state.ids && state.ids.length) {
+        this.playFile(state.ids);
+      }
+      if (screencastify.onSharedFiles)
+        throw new Error('There can only be one a screencastify.onSharedFiles handler');
+      screencastify.onSharedFiles = function(fileIds) {
+        this.uploadFile(fileIds);
+        this.playFile(fileIds);
+        return true;
+      }.bind(this);
+    },
+
+    dettached: function() {
+      delete screencastify.onSharedFiles;
+    },
+
+    uploadFile: function(fileIds) {
+      return screencastify.getFile(fileIds[0]).then(function(fileInfo) {
+        console.log('uploading file', fileInfo);
+        console.log('iin: ',fileInfo.payload);
+        var formData = new FormData();
+        formData.append("File", fileInfo.file);
+        formData.append("DocumentType", "VEREF");
+        formData.append("Role", "Client");
+//        formData.append("DocumentNumber", 2);
+        formData.append("IIN",fileInfo.payload);
+        //var Blob = URL.createObjectURL(fileInfo.file);
+        var xhr = new XMLHttpRequest();
+        var url ="https://altyndbo.sbr.at-consulting.ru/portalserver/proxy/open?pipe=file&url=http%3A%2F%2Flocalhost%2Fecmapi%2Fjson%2Fdocuments";
+        xhr.open('POST', url, true);
+        xhr.onload = function () {
+          console.log(this["response"])
+          console.log(JSON.parse(this["response"]))
+          console.log((JSON.parse(this["response"])["id"]))
+
+//          callback(item)
+        };
+
+        xhr.send(formData);
+
+
+      }.bind(this));
+    },
+    playFile: function(fileIds) {
+      return screencastify.getFile(fileIds[0]).then(function(fileInfo) {
+        console.log('castify-share-player: playing file', fileInfo);
+
+        var video = this.$.video;
+        var blobURL = URL.createObjectURL(fileInfo.file);
+
+      }.bind(this));
+    }
+  });
+
+</script>
+
